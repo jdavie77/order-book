@@ -36,4 +36,6 @@ by separating out facts and dimensions while also indexing the tables efficientl
 - When there are spending thresholds outlined for this project such as $100,000 or $50,000, we either always stay a little under or a little over.
 
 
+**Architecture Diagram**
+
 ![Order Book Diagrams drawio](https://user-images.githubusercontent.com/128027142/226431737-bc287fd3-842f-419d-83fd-a3ae49839c12.svg)
