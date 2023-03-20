@@ -7,6 +7,7 @@ from datetime import date
 import requests
 import pandas as pd
 import boto3
+from sqlalchemy import create_engine
 
 
 def get_order_book_transactions(
@@ -187,19 +188,16 @@ def main():
             )
 
 if __name__ == "__main__":
-    main()
+    #main()
 
-    """
-    from sqlalchemy import create_engine
     db_creds = get_secret("order-book-postgres")
 
     python_dsn = (
-        f'postgresql+psycopg2://{db_creds["username"]}:CJ2YfanhJenTNjxlCSMe@{db_creds["host"]}/postgres'
+        f'postgresql+psycopg2://{db_creds["username"]}:{db_creds["password"]}@{db_creds["host"]}/postgres'
     )
 
     engine = create_engine(python_dsn)
     conn = engine.connect()
     sql = "select current_timestamp"
     print(conn.execute(sql).fetchone())
-    """
 

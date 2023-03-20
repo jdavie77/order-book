@@ -2,3 +2,5 @@ pandas
 requests
 boto3
 typing
+sqlalchemy
+psycopg2-binary
