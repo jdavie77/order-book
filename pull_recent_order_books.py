@@ -198,6 +198,7 @@ if __name__ == "__main__":
 
     engine = create_engine(python_dsn)
     conn = engine.connect()
-    sql = "select current_timestamp"
-    print(conn.execute(sql).fetchone())
+    print("we made it here")
+    sql = "SELECT * FROM pg_catalog.pg_tables"
+    print(conn.execute(sql).fetchall())
 
