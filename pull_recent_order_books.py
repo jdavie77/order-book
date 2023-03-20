@@ -7,6 +7,7 @@ import requests
 import pandas as pd
 import boto3
 
+
 def get_order_book_transactions(
         trade_type: List[List[str]]
 ) -> pd.DataFrame:
@@ -85,12 +86,26 @@ def get_binance_order_book(
     Returns:
          Order book containing bids, asks and some metadata.
     """
-    response = requests.get(
+    proxy_credentials = get_secret(secret="bright-data-proxies")
+    username = proxy_credentials["username"]
+    password = proxy_credentials["password"]
+    host = proxy_credentials["host"]
+    port = proxy_credentials["port"]
+    # Binance does not allow access from US ips. We're connecting
+    # through an IP pool based out of India.
+    proxies = {
+        "http": f"http://{username}:{password}@{host}:{port}",
+        "https": f"http://{username}:{password}@{host}:{port}"
+    }
+    requests_session = requests.Session()
+    requests_session.proxies.update(proxies)
+    response = requests_session.get(
         "https://api.binance.com/api/v3/depth",
         params={
             "symbol":coin_symbol, "limit":5000
         }
     )
+
     if response.status_code != 200:
         raise Exception(
             f"Received status code {response.status_code} with error: "
@@ -98,6 +113,17 @@ def get_binance_order_book(
         )
     return json.loads(response.content)
 
+
+def get_secret(
+        secret: str, parse_json: bool = True, region: str = None
+) -> Union[dict, str]:
+    """Calls AWS Secrets Manager and returns the requested secret"""
+    client = boto3.client("secretsmanager", region_name = region or "us-east-1")
+    messy_secret = client.get_secret_value(SecretId=secret)["SecretString"]
+    if parse_json:
+        return json.loads(messy_secret)
+    else:
+        return messy_secret
 
 def main():
 
