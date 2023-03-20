@@ -1,32 +1,33 @@
 **Getting started**
+
 To activate an isolated virtual env & install dependencies run `. ./setup.sh`.
 To run the script itself `python pull_recent_order_books.py`
 
 **My process**
-- Read over requirements multiple times
+- Read over requirements multiple times, including throughout the project
 - Conducted some preliminary research (detailed below in `Background Research` section)
 - Selected two marketplaces and explored the data returned by their order book APIs
 - Diagrammed overall architecture including dataflow and final table structures
-- Provisioned dediced AWS account for this project utilizing EC2, SSM, and Postgres.
+- Provisioned dediced AWS account utilizing EC2, SSM, and Postgres.
 - Wrote the code (`pull_recent_order_books.py`)
-- Deployed the code via github actions workflow.
-- Schedule code to run once per hour as a cron job (simple solution for now)
-- Monitor output for a bit to ensure it's working properly
+- Deployed the code via a github actions workflow.
+- Schedule code to run once every 60 seconds as a cron job on EC2
+- Monitored output for a bit to ensure everything working properly
   - Performance did change once running on an EC2, required me to utilize proxies to ensure data could be pulled from Binance within the US.
   
 **Background research**
 
-- Coinbase has lower fees for larger transactions (0.35% between 10K and 50K vs .50% at <10K).
+- Coinbase has lower fees for larger transactions (0.35% between $10K and $50K vs .50% at <$10K).
 - Bids and asks already sorted in a very helpful order. Highest bids first, lowest asks first.
 - Using level 3 orderbook, need to be aware that Coinbase warns to not abuse. Should swap to use level 2 if transaction_id granularity isn’t required.
 - Could use level 1 orderbook for mid price instead of calculating ourselves.
-- No need for a heavy streaming solution yet quite yet. Postgres can work fine if we model the data properly
+- No need for a heavy streaming solution quite yet. Postgres can work fine if we model the data properly
 by separating out facts and dimensions while also indexing the tables efficiently. Views on top of these tables to assist analytics will also be essential.
 
 
 **Future opportunities**
 - Add function / script to pull from raw order data and fully repopulate `optimal_transactions` table in the event we wish to change the $100K USD threshold.
-- Enhanced monitoring, catch response codes from APIs and log failures to Kibana / Grafana / (other soluton)
+- Enhanced monitoring, catch response codes from APIs and log failures to Kibana / Grafana / other
 - Unit tests
 - Structure raw order book data better prior to writing.
 - Documentation for all the fields. Does Core Scientific use a data catalog?
