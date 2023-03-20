@@ -11,7 +11,8 @@ from sqlalchemy import create_engine
 
 
 def get_order_book_transactions(
-        trade_type: List[List[str]]
+        trade_type: List[List[str]],
+        transaction_limit: int
 ) -> pd.DataFrame:
     """
     Loop through bids or asks until we find 100K USD worth and record them.
@@ -27,12 +28,11 @@ def get_order_book_transactions(
         USD. Few other details about each transaction such as the cost.
         In the future for coinbase we could also return a transaction_id.
     """
-    transaction_limit = 100000 # USD
     available_transactions = []
     for trans in trade_type:
         coin_price = float(trans[0])
         amount_requested = float(trans[1])
-        transaction_cost = coin_price * amount_requested
+        transaction_cost = round(coin_price * amount_requested,2)
         transaction_details = {
             "coin_price": coin_price,
             "amount_requested": amount_requested,
@@ -127,6 +127,18 @@ def get_secret(
     else:
         return messy_secret
 
+def get_postgres_db():
+    db_creds = get_secret("order-book-postgres")
+    python_dsn = (
+        f'postgresql+psycopg2://'
+        f'{db_creds["username"]}:'
+        f'{db_creds["password"]}@'
+        f'{db_creds["host"]}/'
+        f'postgres'
+    )
+    engine = create_engine(python_dsn)
+    return engine, engine.connect()
+
 def main():
 
     # More exchanges can be added as long as a get_order_book function is created for
@@ -143,16 +155,43 @@ def main():
             "order_book_func": get_binance_order_book,
         }
     ]
-
+    transaction_limit = 100000 # USD. Can be changed in future.
     unique_run_id = str(uuid4())
-    hold = []
+    postgres_engine, postgres_conn = get_postgres_db()
     for exchange in exchange_config:
         for coin_type in exchange["crypto_symbols"]:
             print(f"Pulling order book information from {exchange['name']} for {coin_type}")
             pull_timestamp = int(time.time())
             order_book = exchange["order_book_func"](coin_symbol=coin_type)
-            first_100k_asks = get_order_book_transactions(trade_type=order_book["asks"])
-            first_100k_bids = get_order_book_transactions(trade_type=order_book["bids"])
+            s3_client = boto3.client("s3")
+            s3_client.put_object(
+                Body=json.dumps(order_book, indent=4),
+                Bucket="crypto-order-book-data",
+                Key=f"{date.today()}/{exchange['name']}/{coin_type}/{unique_run_id}.json"
+            )
+            print("Successfully wrote data to S3")
+
+            first_100k_asks = get_order_book_transactions(
+                trade_type=order_book["asks"],
+                transaction_limit=transaction_limit
+            )
+            first_100k_bids = get_order_book_transactions(
+                trade_type=order_book["bids"],
+                transaction_limit=transaction_limit
+            )
+            first_100k_asks["transaction_type"] = "ask"
+            first_100k_bids["transaction_type"] = "bid"
+            stacked_bids_and_asks = pd.concat([first_100k_asks, first_100k_bids])
+            stacked_bids_and_asks["pull_timestamp"] = pull_timestamp
+            coin_transaction_id = f"{exchange['name']}-{coin_type}-{unique_run_id}"
+            stacked_bids_and_asks["coin_transaction_id"] = coin_transaction_id
+            stacked_bids_and_asks.to_sql(
+                "optimal_transactions",
+                postgres_conn,
+                index=False,
+                if_exists="append"
+            )
+
             # Order books come back ordered properly. Highest bids first, lowest asks first.
             mid_price = (
                 (
@@ -168,37 +207,33 @@ def main():
                 ) * mid_price
             )
             run_length = int(time.time()) - pull_timestamp
-            hold.append({
-                "exchange": exchange["name"],
-                "coin": coin_type,
-                #"first_100k_asks": first_100k_asks,
-                # "first_100k_bids": first_100k_bids,
-                "mid_price": round(mid_price, 2),
-                "profit_opportunity": round(profit_opportunity, 2),
-                "pull_timestamp": pull_timestamp,
-                "run_length": run_length,
-                "run_id": unique_run_id
-            })
-            print(run_length,hold)
-            s3_client = boto3.client("s3")
-            s3_client.put_object(
-                Body=json.dumps(order_book, indent=4),
-                Bucket="crypto-order-book-data",
-                Key=f"{date.today()}/{exchange['name']}/{coin_type}/{unique_run_id}.json"
+            summary_row_data = pd.DataFrame(
+                {
+                    "coin_trans_id": [coin_transaction_id],
+                    "exchange": [exchange["name"]],
+                    "coin": [coin_type],
+                    "transaction_limit": [transaction_limit],
+                    "mid_price": [round(mid_price, 2)],
+                    "profit_opportunity": [round(profit_opportunity, 2)],
+                    "pull_timestamp": [pull_timestamp],
+                    "run_length": [run_length],
+                    "run_id": [unique_run_id]
+                }
+            )
+            summary_row_data.to_sql(
+                "transactions_summary",
+                postgres_conn,
+                index=False,
+                if_exists="append"
             )
 
+    postgres_conn.close()
+    postgres_engine.dispose()
+
+
 if __name__ == "__main__":
-    #main()
-
-    db_creds = get_secret("order-book-postgres")
-
-    python_dsn = (
-        f'postgresql+psycopg2://{db_creds["username"]}:{db_creds["password"]}@{db_creds["host"]}/postgres'
-    )
-
-    engine = create_engine(python_dsn)
-    conn = engine.connect()
+    main()
     print("we made it here")
     sql = "SELECT * FROM pg_catalog.pg_tables"
-    print(conn.execute(sql).fetchall())
+    #print(conn.execute(sql).fetchall())
 
