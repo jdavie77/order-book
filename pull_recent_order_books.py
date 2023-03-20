@@ -2,6 +2,7 @@ import json
 from uuid import uuid4
 import time
 from typing import List, Dict, Union
+from datetime import date
 
 import requests
 import pandas as pd
@@ -178,6 +179,27 @@ def main():
                 "run_id": unique_run_id
             })
             print(run_length,hold)
+            s3_client = boto3.client("s3")
+            s3_client.put_object(
+                Body=json.dumps(order_book, indent=4),
+                Bucket="crypto-order-book-data",
+                Key=f"{date.today()}/{exchange['name']}/{coin_type}/{unique_run_id}.json"
+            )
 
 if __name__ == "__main__":
     main()
+
+    """
+    from sqlalchemy import create_engine
+    db_creds = get_secret("order-book-postgres")
+
+    python_dsn = (
+        f'postgresql+psycopg2://{db_creds["username"]}:CJ2YfanhJenTNjxlCSMe@{db_creds["host"]}/postgres'
+    )
+
+    engine = create_engine(python_dsn)
+    conn = engine.connect()
+    sql = "select current_timestamp"
+    print(conn.execute(sql).fetchone())
+    """
+
