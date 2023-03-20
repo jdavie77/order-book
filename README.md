@@ -35,5 +35,5 @@ by separating out facts and dimensions while also indexing the tables efficientl
 - While we are persisting the raw order book data, it isn't to be consumed on a frequent basis and thus S3 in a fairly unstructured format is sufficient for a POC. The tables & views derived during each poll are what is useful for analysis
 - When there are spending thresholds outlined for this project such as $100,000 or $50,000, we either always stay a little under or a little over.
 
-**Architecture Diagram**
-![alt text](https://github.com/jdavie77/order-book/blob/master/order_book_diagrams.drawio.html?raw=true)
+
+![Order Book Diagrams drawio](https://user-images.githubusercontent.com/128027142/226431737-bc287fd3-842f-419d-83fd-a3ae49839c12.svg)
