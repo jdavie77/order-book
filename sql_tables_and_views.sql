@@ -27,7 +27,6 @@ WITH last_two_days_transactions AS (
     SELECT * FROM postgres.public.optimal_transactions
     WHERE pull_timestamp >
           EXTRACT(EPOCH FROM NOW()) - (EXTRACT(EPOCH FROM NOW()) - (60 * 60 * 24 * 2)) -- Two days back from now
-    order by pull_timestamp desc
 )
 SELECT all_transactions.*
      ,exchange

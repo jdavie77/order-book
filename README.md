@@ -1,14 +1,15 @@
+**Getting started**
 To activate an isolated virtual env & install dependencies run `. ./setup.sh`.
 To run the script itself `python pull_recent_order_books.py`
 
 **My process**
 - Read over requirements multiple times
-- Conducted some preliminary research (detailed below)
+- Conducted some preliminary research (detailed below in `Background Research` section)
 - Selected two marketplaces and explored the data returned by their order book APIs
-- Diagramed overall architecture including dataflow and final table structures
-- Provisioned AWS account for this project (dedicated EC2, SSM, Postgres)
+- Diagrammed overall architecture including dataflow and final table structures
+- Provisioned dediced AWS account for this project utilizing EC2, SSM, and Postgres.
 - Wrote the code (`pull_recent_order_books.py`)
-- Deployed the code (simple CI/CD GH workflow)
+- Deployed the code via github actions workflow.
 - Schedule code to run once per hour as a cron job (simple solution for now)
 - Monitor output for a bit to ensure it's working properly
   - Performance did change once running on an EC2, required me to utilize proxies to ensure data could be pulled from Binance within the US.
