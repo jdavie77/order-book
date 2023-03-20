@@ -1,0 +1,1 @@
+To activate an isolated virtual env & install dependencies run `. ./setup.sh`
