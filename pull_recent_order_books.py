@@ -8,7 +8,7 @@ import requests
 import pandas as pd
 import boto3
 from sqlalchemy import create_engine
-
+import sqlalchemy.engine
 
 def get_order_book_transactions(
         trade_type: List[List[str]],
@@ -127,7 +127,7 @@ def get_secret(
     else:
         return messy_secret
 
-def get_postgres_db():
+def get_postgres_engine() -> sqlalchemy.engine:
     db_creds = get_secret("order-book-postgres")
     python_dsn = (
         f'postgresql+psycopg2://'
@@ -136,8 +136,7 @@ def get_postgres_db():
         f'{db_creds["host"]}/'
         f'postgres'
     )
-    engine = create_engine(python_dsn)
-    return engine, engine.connect()
+    return create_engine(python_dsn)
 
 def main():
 
@@ -157,7 +156,7 @@ def main():
     ]
     transaction_limit = 100000 # USD. Can be changed in future.
     unique_run_id = str(uuid4())
-    postgres_engine, postgres_conn = get_postgres_db()
+    postgres_engine = get_postgres_engine()
     for exchange in exchange_config:
         for coin_type in exchange["crypto_symbols"]:
             print(f"Pulling order book information from {exchange['name']} for {coin_type}")
@@ -187,10 +186,11 @@ def main():
             stacked_bids_and_asks["coin_transaction_id"] = coin_transaction_id
             stacked_bids_and_asks.to_sql(
                 "optimal_transactions",
-                postgres_conn,
+                postgres_engine,
                 index=False,
                 if_exists="append"
             )
+            print(f"Optimal transactions write for {coin_transaction_id} complete")
 
             # Order books come back ordered properly. Highest bids first, lowest asks first.
             mid_price = (
@@ -209,7 +209,7 @@ def main():
             run_length = int(time.time()) - pull_timestamp
             summary_row_data = pd.DataFrame(
                 {
-                    "coin_trans_id": [coin_transaction_id],
+                    "coin_transaction_id": [coin_transaction_id],
                     "exchange": [exchange["name"]],
                     "coin": [coin_type],
                     "transaction_limit": [transaction_limit],
@@ -222,18 +222,15 @@ def main():
             )
             summary_row_data.to_sql(
                 "transactions_summary",
-                postgres_conn,
+                postgres_engine,
                 index=False,
                 if_exists="append"
             )
+            print(f"transactions summary write for {coin_transaction_id} complete")
 
-    postgres_conn.close()
     postgres_engine.dispose()
 
 
 if __name__ == "__main__":
     main()
-    print("we made it here")
-    sql = "SELECT * FROM pg_catalog.pg_tables"
-    #print(conn.execute(sql).fetchall())
 
